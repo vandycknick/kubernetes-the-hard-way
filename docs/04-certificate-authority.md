@@ -132,11 +132,9 @@ cat > ${instance}-csr.json <<EOF
 }
 EOF
 
-EXTERNAL_IP=$(gcloud compute instances describe ${instance} \
-  --format 'value(networkInterfaces[0].accessConfigs[0].natIP)')
+EXTERNAL_IP=$(vagrant ssh ${instance} -c "ip -f inet addr show enp0s8 | awk '/inet / {print \$2}' | cut -d/ -f1 | tr -d '\r'")
 
-INTERNAL_IP=$(gcloud compute instances describe ${instance} \
-  --format 'value(networkInterfaces[0].networkIP)')
+INTERNAL_IP=$(vagrant ssh ${instance} -c "ip -f inet addr show enp0s3 | awk '/inet / {print \$2}' | cut -d/ -f1 | tr -d '\r'")
 
 cfssl gencert \
   -ca=ca.pem \
@@ -201,7 +199,6 @@ Results:
 kube-controller-manager-key.pem
 kube-controller-manager.pem
 ```
-
 
 ### The Kube Proxy Client Certificate
 
@@ -289,19 +286,16 @@ kube-scheduler-key.pem
 kube-scheduler.pem
 ```
 
-
 ### The Kubernetes API Server Certificate
 
 The `kubernetes-the-hard-way` static IP address will be included in the list of subject alternative names for the Kubernetes API Server certificate. This will ensure the certificate can be validated by remote clients.
 
 Generate the Kubernetes API Server certificate and private key:
 
+> For now this guide isn't using a public load balancer that exposes the control plane and balances request between the different controller instances. In the original guide this is done via a GCP load balancer in the this setup it would require spinning up an extra machine that can do the load balancing. For now I've opted to not use an LB for simplicity.
+
 ```
 {
-
-KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
-  --region $(gcloud config get-value compute/region) \
-  --format 'value(address)')
 
 KUBERNETES_HOSTNAMES=kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.svc.cluster.local
 
@@ -328,7 +322,7 @@ cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
   -config=ca-config.json \
-  -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,${KUBERNETES_PUBLIC_ADDRESS},127.0.0.1,${KUBERNETES_HOSTNAMES} \
+  -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,127.0.0.1,${KUBERNETES_HOSTNAMES} \
   -profile=kubernetes \
   kubernetes-csr.json | cfssljson -bare kubernetes
 
@@ -389,14 +383,17 @@ service-account-key.pem
 service-account.pem
 ```
 
-
 ## Distribute the Client and Server Certificates
 
 Copy the appropriate certificates and private keys to each worker instance:
 
+> Install vagrant-scp to make to run the following scripts. `vagrant plugin install vagrant-scp`
+
 ```
 for instance in worker-0 worker-1 worker-2; do
-  gcloud compute scp ca.pem ${instance}-key.pem ${instance}.pem ${instance}:~/
+  vagrant scp ca.pem ${instance}:~/
+  vagrant scp ${instance}-key.pem ${instance}:~/
+  vagrant scp ${instance}.pem ${instance}:~/
 done
 ```
 
@@ -404,8 +401,12 @@ Copy the appropriate certificates and private keys to each controller instance:
 
 ```
 for instance in controller-0 controller-1 controller-2; do
-  gcloud compute scp ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
-    service-account-key.pem service-account.pem ${instance}:~/
+  vagrant scp ca.pem ${instance}:~/
+  vagrant scp ca-key.pem ${instance}:~/
+  vagrant scp kubernetes-key.pem ${instance}:~/
+  vagrant scp kubernetes.pem ${instance}:~/
+  vagrant scp service-account-key.pem ${instance}:~/
+  vagrant scp service-account.pem ${instance}:~/
 done
 ```
 

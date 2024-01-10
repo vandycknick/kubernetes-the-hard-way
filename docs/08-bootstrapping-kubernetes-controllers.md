@@ -7,7 +7,7 @@ In this lab you will bootstrap the Kubernetes control plane across three compute
 The commands in this lab must be run on each controller instance: `controller-0`, `controller-1`, and `controller-2`. Login to each controller instance using the `gcloud` command. Example:
 
 ```
-gcloud compute ssh controller-0
+vagrant ssh controller-0
 ```
 
 ### Running commands in parallel with tmux
@@ -58,19 +58,11 @@ Install the Kubernetes binaries:
 The instance internal IP address will be used to advertise the API Server to members of the cluster. Retrieve the internal IP address for the current compute instance:
 
 ```
-INTERNAL_IP=$(curl -s -H "Metadata-Flavor: Google" \
-  http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/ip)
+INTERNAL_IP=$(ip -f inet addr show enp0s8 | awk '/inet / {print $2}' | cut -d/ -f1 | tr -d '\r')
 ```
 
 ```
-REGION=$(curl -s -H "Metadata-Flavor: Google" \
-  http://metadata.google.internal/computeMetadata/v1/project/attributes/google-compute-default-region)
-```
-
-```
-KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
-  --region $REGION \
-  --format 'value(address)')
+KUBERNETES_PUBLIC_ADDRESS="10.240.0.10"
 ```
 
 Create the `kube-apiserver.service` systemd unit file:
@@ -297,7 +289,7 @@ In this section you will configure RBAC permissions to allow the Kubernetes API 
 The commands in this section will effect the entire cluster and only need to be run once from one of the controller nodes.
 
 ```
-gcloud compute ssh controller-0
+vagrant ssh controller-0
 ```
 
 Create the `system:kube-apiserver-to-kubelet` [ClusterRole](https://kubernetes.io/docs/admin/authorization/rbac/#role-and-clusterrole) with permissions to access the Kubelet API and perform most common tasks associated with managing pods:
@@ -348,12 +340,37 @@ subjects:
 EOF
 ```
 
-## The Kubernetes Frontend Load Balancer
+From your local machine you should now have access to the control plane:
+
+Make a HTTP request for the Kubernetes version info:
+
+```
+curl --cacert ca.pem https://10.240.0.10:6443/version
+```
+
+> output
+
+```
+{
+  "major": "1",
+  "minor": "21",
+  "gitVersion": "v1.21.0",
+  "gitCommit": "cb303e613a121a29364f75cc67d3d580833a7479",
+  "gitTreeState": "clean",
+  "buildDate": "2021-04-08T16:25:06Z",
+  "goVersion": "go1.16.1",
+  "compiler": "gc",
+  "platform": "linux/amd64"
+}
+```
+
+Not used at the moment:
+
+<!-- ## The Kubernetes Frontend Load Balancer
 
 In this section you will provision an external load balancer to front the Kubernetes API Servers. The `kubernetes-the-hard-way` static IP address will be attached to the resulting load balancer.
 
 > The compute instances created in this tutorial will not have permission to complete this section. **Run the following commands from the same machine used to create the compute instances**.
-
 
 ### Provision a Network Load Balancer
 
@@ -421,6 +438,6 @@ curl --cacert ca.pem https://${KUBERNETES_PUBLIC_ADDRESS}:6443/version
   "compiler": "gc",
   "platform": "linux/amd64"
 }
-```
+``` -->
 
 Next: [Bootstrapping the Kubernetes Worker Nodes](09-bootstrapping-kubernetes-workers.md)

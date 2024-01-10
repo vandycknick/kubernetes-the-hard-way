@@ -13,10 +13,10 @@ Each kubeconfig requires a Kubernetes API Server to connect to. To support high 
 Retrieve the `kubernetes-the-hard-way` static IP address:
 
 ```
-KUBERNETES_PUBLIC_ADDRESS=$(gcloud compute addresses describe kubernetes-the-hard-way \
-  --region $(gcloud config get-value compute/region) \
-  --format 'value(address)')
+KUBERNETES_PUBLIC_ADDRESS=$(vagrant ssh controller-0 -c "ip -f inet addr show enp0s8 | awk '/inet / {print \$2}' | cut -d/ -f1 | tr -d '\r'")
 ```
+
+> In the original guide this would return the IP of the load balancer. In this case controller-0 will be used directly.
 
 ### The kubelet Kubernetes Configuration File
 
@@ -123,7 +123,6 @@ Results:
 kube-controller-manager.kubeconfig
 ```
 
-
 ### The kube-scheduler Kubernetes Configuration File
 
 Generate a kubeconfig file for the `kube-scheduler` service:
@@ -190,16 +189,14 @@ Results:
 admin.kubeconfig
 ```
 
-
-## 
-
 ## Distribute the Kubernetes Configuration Files
 
 Copy the appropriate `kubelet` and `kube-proxy` kubeconfig files to each worker instance:
 
 ```
 for instance in worker-0 worker-1 worker-2; do
-  gcloud compute scp ${instance}.kubeconfig kube-proxy.kubeconfig ${instance}:~/
+  vagrant scp ${instance}.kubeconfig ${instance}:~/
+  vagrant scp kube-proxy.kubeconfig ${instance}:~/
 done
 ```
 
@@ -207,7 +204,9 @@ Copy the appropriate `kube-controller-manager` and `kube-scheduler` kubeconfig f
 
 ```
 for instance in controller-0 controller-1 controller-2; do
-  gcloud compute scp admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig ${instance}:~/
+  vagrant scp admin.kubeconfig ${instance}:~/
+  vagrant scp kube-controller-manager.kubeconfig ${instance}:~/
+  vagrant scp kube-scheduler.kubeconfig ${instance}:~/
 done
 ```
 

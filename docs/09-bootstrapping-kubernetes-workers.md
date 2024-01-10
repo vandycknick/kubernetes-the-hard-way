@@ -4,10 +4,10 @@ In this lab you will bootstrap three Kubernetes worker nodes. The following comp
 
 ## Prerequisites
 
-The commands in this lab must be run on each worker instance: `worker-0`, `worker-1`, and `worker-2`. Login to each worker instance using the `gcloud` command. Example:
+The commands in this lab must be run on each worker instance: `worker-0`, `worker-1`, and `worker-2`. Login to each worker instance using the `vagrant` command. Example:
 
 ```
-gcloud compute ssh worker-0
+vagrant ssh worker-0
 ```
 
 ### Running commands in parallel with tmux
@@ -37,7 +37,7 @@ Verify if swap is enabled:
 sudo swapon --show
 ```
 
-If output is empthy then swap is not enabled. If swap is enabled run the following command to disable swap immediately:
+If output is empty then swap is not enabled. If swap is enabled run the following command to disable swap immediately:
 
 ```
 sudo swapoff -a
@@ -79,7 +79,7 @@ Install the worker binaries:
   tar -xvf containerd-1.4.4-linux-amd64.tar.gz -C containerd
   sudo tar -xvf cni-plugins-linux-amd64-v0.9.1.tgz -C /opt/cni/bin/
   sudo mv runc.amd64 runc
-  chmod +x crictl kubectl kube-proxy kubelet runc 
+  chmod +x crictl kubectl kube-proxy kubelet runc
   sudo mv crictl kubectl kube-proxy kubelet runc /usr/local/bin/
   sudo mv containerd/bin/* /bin/
 }
@@ -90,8 +90,7 @@ Install the worker binaries:
 Retrieve the Pod CIDR range for the current compute instance:
 
 ```
-POD_CIDR=$(curl -s -H "Metadata-Flavor: Google" \
-  http://metadata.google.internal/computeMetadata/v1/instance/attributes/pod-cidr)
+POD_CIDR="10.200.1$(hostname | awk -F- '{ print $2 }').0/24"
 ```
 
 Create the `bridge` network configuration file:
@@ -210,7 +209,7 @@ tlsPrivateKeyFile: "/var/lib/kubelet/${HOSTNAME}-key.pem"
 EOF
 ```
 
-> The `resolvConf` configuration is used to avoid loops when using CoreDNS for service discovery on systems running `systemd-resolved`. 
+> The `resolvConf` configuration is used to avoid loops when using CoreDNS for service discovery on systems running `systemd-resolved`.
 
 Create the `kubelet.service` systemd unit file:
 
@@ -297,8 +296,7 @@ EOF
 List the registered Kubernetes nodes:
 
 ```
-gcloud compute ssh controller-0 \
-  --command "kubectl get nodes --kubeconfig admin.kubeconfig"
+vagrant ssh controller-0 --command "kubectl get nodes --kubeconfig admin.kubeconfig"
 ```
 
 > output
