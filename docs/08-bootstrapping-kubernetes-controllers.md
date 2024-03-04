@@ -4,7 +4,7 @@ In this lab you will bootstrap the Kubernetes control plane across three compute
 
 ## Prerequisites
 
-The commands in this lab must be run on each controller instance: `controller-0`, `controller-1`, and `controller-2`. Login to each controller instance using the `gcloud` command. Example:
+The commands in this lab must be run on each controller instance: `controller-0`, `controller-1`, and `controller-2`. Login to each controller instance using the `vagrant` command. Example:
 
 ```
 vagrant ssh controller-0
@@ -58,7 +58,7 @@ Install the Kubernetes binaries:
 The instance internal IP address will be used to advertise the API Server to members of the cluster. Retrieve the internal IP address for the current compute instance:
 
 ```
-INTERNAL_IP=$(ip -f inet addr show enp0s8 | awk '/inet / {print $2}' | cut -d/ -f1 | tr -d '\r')
+INTERNAL_IP=$(ip -f inet addr show enp0s8 | awk '/inet / {print $2}' | cut -d/ -f1 | tr -d '\r' | tr -d '\n')
 ```
 
 ```

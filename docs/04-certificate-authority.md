@@ -132,9 +132,9 @@ cat > ${instance}-csr.json <<EOF
 }
 EOF
 
-EXTERNAL_IP=$(vagrant ssh ${instance} -c "ip -f inet addr show enp0s8 | awk '/inet / {print \$2}' | cut -d/ -f1 | tr -d '\r'")
+EXTERNAL_IP="10.240.0.10"
 
-INTERNAL_IP=$(vagrant ssh ${instance} -c "ip -f inet addr show enp0s3 | awk '/inet / {print \$2}' | cut -d/ -f1 | tr -d '\r'")
+INTERNAL_IP=$(vagrant ssh ${instance} -c "ip -f inet addr show enp0s8 | awk '/inet / {print \$2}' | cut -d/ -f1" | tr -d '\r' | tr -d '\n')
 
 cfssl gencert \
   -ca=ca.pem \

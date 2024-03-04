@@ -13,18 +13,18 @@ In this section you will gather the information required to create routes in the
 Print the internal IP address and Pod CIDR range for each worker instance:
 
 ```
-for instance in worker-0 worker-1 worker-2; do
-  gcloud compute instances describe ${instance} \
-    --format 'value[separator=" "](networkInterfaces[0].networkIP,metadata.items[0].value)'
+for i in 0 1 2; do
+  host_ip=$(vagrant ssh worker-${i} -c "ip -f inet addr show enp0s8 | awk '/inet / {print \$2}' | cut -d/ -f1" | tr -d '\r' | tr -d '\n')
+  echo "$host_ip 10.200.1$i.0/24"
 done
 ```
 
 > output
 
 ```
-10.240.0.20 10.200.0.0/24
-10.240.0.21 10.200.1.0/24
-10.240.0.22 10.200.2.0/24
+10.240.0.20 10.200.10.0/24
+10.240.0.21 10.200.11.0/24
+10.240.0.22 10.200.12.0/24
 ```
 
 ## Routes
@@ -33,28 +33,59 @@ Create network routes for each worker instance:
 
 ```
 for i in 0 1 2; do
-  gcloud compute routes create kubernetes-route-10-200-${i}-0-24 \
-    --network kubernetes-the-hard-way \
-    --next-hop-address 10.240.0.2${i} \
-    --destination-range 10.200.${i}.0/24
+  vagrant ssh worker-${i} --command "sudo apt-get update; sudo apt-get install -y net-tools;"
+  vagrant ssh worker-${i} --command "sudo route add -net 10.200.10.0/24 gw 10.240.0.20"
+  vagrant ssh worker-${i} --command "sudo route add -net 10.200.11.0/24 gw 10.240.0.21"
+  vagrant ssh worker-${i} --command "sudo route add -net 10.200.12.0/24 gw 10.240.0.22"
 done
 ```
 
 List the routes in the `kubernetes-the-hard-way` VPC network:
 
 ```
-gcloud compute routes list --filter "network: kubernetes-the-hard-way"
+for i in 0 1 2; do
+  echo "Routes on worker-${i}"
+  vagrant ssh worker-${i} --command "route"
+  echo
+done
 ```
 
 > output
 
 ```
-NAME                            NETWORK                  DEST_RANGE     NEXT_HOP                  PRIORITY
-default-route-1606ba68df692422  kubernetes-the-hard-way  10.240.0.0/24  kubernetes-the-hard-way   0
-default-route-615e3652a8b74e4d  kubernetes-the-hard-way  0.0.0.0/0      default-internet-gateway  1000
-kubernetes-route-10-200-0-0-24  kubernetes-the-hard-way  10.200.0.0/24  10.240.0.20               1000
-kubernetes-route-10-200-1-0-24  kubernetes-the-hard-way  10.200.1.0/24  10.240.0.21               1000
-kubernetes-route-10-200-2-0-24  kubernetes-the-hard-way  10.200.2.0/24  10.240.0.22               1000
+Routes on worker-0
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+default         _gateway        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     0      0        0 enp0s3
+_gateway        0.0.0.0         255.255.255.255 UH    100    0        0 enp0s3
+10.200.10.0     worker-0        255.255.255.0   UG    0      0        0 enp0s8
+10.200.11.0     10.240.0.21     255.255.255.0   UG    0      0        0 enp0s8
+10.200.12.0     10.240.0.22     255.255.255.0   UG    0      0        0 enp0s8
+10.240.0.0      0.0.0.0         255.255.255.0   U     0      0        0 enp0s8
+
+Routes on worker-1
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+default         _gateway        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     0      0        0 enp0s3
+_gateway        0.0.0.0         255.255.255.255 UH    100    0        0 enp0s3
+10.200.10.0     10.240.0.20     255.255.255.0   UG    0      0        0 enp0s8
+10.200.11.0     worker-1        255.255.255.0   UG    0      0        0 enp0s8
+10.200.12.0     10.240.0.22     255.255.255.0   UG    0      0        0 enp0s8
+10.240.0.0      0.0.0.0         255.255.255.0   U     0      0        0 enp0s8
+
+Routes on worker-2
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+default         _gateway        0.0.0.0         UG    100    0        0 enp0s3
+10.0.2.0        0.0.0.0         255.255.255.0   U     0      0        0 enp0s3
+_gateway        0.0.0.0         255.255.255.255 UH    100    0        0 enp0s3
+10.200.10.0     10.240.0.20     255.255.255.0   UG    0      0        0 enp0s8
+10.200.11.0     10.240.0.21     255.255.255.0   UG    0      0        0 enp0s8
+10.200.12.0     worker-2        255.255.255.0   UG    0      0        0 enp0s8
+10.240.0.0      0.0.0.0         255.255.255.0   U     0      0        0 enp0s8
+
 ```
 
 Next: [Deploying the DNS Cluster Add-on](12-dns-addon.md)

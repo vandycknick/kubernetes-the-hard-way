@@ -13,7 +13,7 @@ Each kubeconfig requires a Kubernetes API Server to connect to. To support high 
 Retrieve the `kubernetes-the-hard-way` static IP address:
 
 ```
-KUBERNETES_PUBLIC_ADDRESS=$(vagrant ssh controller-0 -c "ip -f inet addr show enp0s8 | awk '/inet / {print \$2}' | cut -d/ -f1 | tr -d '\r'")
+KUBERNETES_PUBLIC_ADDRESS=$(vagrant ssh controller-0 -c "ip -f inet addr show enp0s8 | awk '/inet / {print \$2}' | cut -d/ -f1" | tr -d '\r' | tr -d '\n')
 ```
 
 > In the original guide this would return the IP of the load balancer. In this case controller-0 will be used directly.
